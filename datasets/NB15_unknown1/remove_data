@@ -1,0 +1,6 @@
+rm anomalies.csv
+rm normal.csv
+rm Generic_0.02_60.csv
+rm Fuzzers_0.02_60.csv
+rm Reconnaissance_0.02_60.csv
+rm test_for_all.csv

@@ -3,7 +3,7 @@ import time
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-tf.device("/cpu:0")
+tf.device("cuda")
 
 from DPLAN import DPLAN
 from ADEnv import ADEnv
@@ -12,7 +12,7 @@ from sklearn.metrics import roc_auc_score, average_precision_score
 
 ### Basic Settings
 # data path settings
-data_path="D:\\Datasets\\UAD"
+data_path="datasets"
 data_folders=["NB15_unknown1"]
 # data_subsets={"NB15_unknown1":["Analysis","Backdoor","DoS","Exploits","Fuzzers","Generic","Reconnaissance"]}
 data_subsets={"NB15_unknown1":["Fuzzers","Generic","Reconnaissance"]}
@@ -72,7 +72,7 @@ for data_f in data_folders:
         unknown_dataname=data_name+".csv"
         undata_path=os.path.join(data_path,data_f,unknown_dataname)
         # get unknown dataset
-        table=pd.read_csv(undata_path)
+        table=pd.read_csv(undata_path, dtype='float64')
         undataset=table.values
 
         print()
