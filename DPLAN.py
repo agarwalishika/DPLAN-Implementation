@@ -13,7 +13,7 @@ from tensorflow.keras.optimizers import RMSprop
 
 from ADEnv import ADEnv
 from utils import penulti_output
-
+from GDN import score_sample
 
 class DPLAN:
     """
@@ -145,6 +145,14 @@ def DQN_iforest(x, model: Model):
 
     return norm_scores
 
+def DQN_GDN(x, model: Model):
+    scores = score_sample(x)
+    norm_scores = (scores-scores.min())/(scores.max()-scores.min())
+    x = norm_scores.shape[0]
+    norm_scores = norm_scores.reshape(x,)
+    return norm_scores
+
+
 class DPLANProcessor(Processor):
     """
     Customize the fit function of DQNAgent.
@@ -190,9 +198,11 @@ class DPLANCallbacks(Callback):
 
     def on_train_begin(self, logs=None):
         # calculate the intrinsic_reward from the initialized DQN
-        self.model.processor.intrinsic_reward=DQN_iforest(self.env.x, self.model.model)
+        #self.model.processor.intrinsic_reward=DQN_iforest(self.env.x, self.model.model)
+        self.model.processor.intrinsic_reward=DQN_GDN(self.env.x, self.model.model)
 
     def on_episode_end(self, episode, logs={}):
         # on the end of episode, DPLAN needs to update the target DQN and the penulti-features
         # the update process of target DQN have implemented in "rl.agents.dqn.DQNAgent.backward()"
-        self.model.processor.intrinsic_reward=DQN_iforest(self.env.x, self.model.model)
+        #self.model.processor.intrinsic_reward=DQN_iforest(self.env.x, self.model.model)
+        self.model.processor.intrinsic_reward=DQN_GDN(self.env.x, self.model.model)

@@ -13,23 +13,25 @@ from sklearn.metrics import roc_auc_score, average_precision_score
 ### Basic Settings
 # data path settings
 data_path="datasets"
-data_folders=["NB15_unknown1"]
+data_folders = ["YelpZip"]
+data_subsets={"YelpZip" : ["mod_node2vec/final_embeddings"]}
+# data_folders=["NB15_unknown1"]
 # data_subsets={"NB15_unknown1":["Fuzzers","Generic","Reconnaissance"]}
-data_subsets={"NB15_unknown1":["Analysis","DoS","Exploits","Fuzzers","Reconnaissance"]}
-testdata_subset="test_for_all.csv" # test data is the same for subsets of the same class
+# data_subsets={"NB15_unknown1":["Analysis","DoS","Exploits","Fuzzers","Reconnaissance"]}
+testdata_subset="mod_node2vec/test_final_embeddings.csv" # test data is the same for subsets of the same class
 # scenario settings
-num_knowns=60
-contamination_rate=0.02
+num_knowns=141
+contamination_rate=0.141
 # experiment settings
 runs=10
 model_path="./model"
-result_path="./results"
+result_path="./results/mod_node2vec"
 result_file="results.csv"
 Train=True
 Test=True
 
 ### Anomaly Detection Environment Settings
-size_sampling_Du=1000
+size_sampling_Du=860
 prob_au=0.5
 label_normal=0
 label_anomaly=1
@@ -62,17 +64,19 @@ for data_f in data_folders:
     subsets=data_subsets[data_f]
     testdata_path=os.path.join(data_path,data_f,testdata_subset)
     test_table=pd.read_csv(testdata_path)
+    test_table.drop(columns=test_table.columns[0], axis=1, inplace=True)
     test_dataset=test_table.values
 
     for subset in subsets:
         np.random.seed(42)
         tf.random.set_seed(42)
         # location of unknwon datasets
-        data_name="{}_{}_{}".format(subset,contamination_rate,num_knowns)
+        data_name="{}".format(subset) #"{}_{}_{}".format(subset,contamination_rate,num_knowns)
         unknown_dataname=data_name+".csv"
         undata_path=os.path.join(data_path,data_f,unknown_dataname)
         # get unknown dataset
-        table=pd.read_csv(undata_path, dtype='float64')
+        table=pd.read_csv(undata_path)
+        table.drop(columns=table.columns[0], axis=1, inplace=True)
         undataset=table.values
 
         print()
