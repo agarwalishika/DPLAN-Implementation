@@ -1,0 +1,19 @@
+- calc_features.py: a helper python file that includes methods to calculate features for nodes of the graph. Use/develop as a library
+
+- create_medium.py: to create a medium sized dataset to train/test on. Takes a portion of the data in the directory `raw/`
+
+- deepwalk/: directory that contains the code for running the Deep Walk baseline method
+
+- graph.txt: pickle file that represents the graph. load from pickle and use it as a networkx object
+
+- make_graph.py: constructs the graph as saves it as a pickle file called 'graph.txt'
+
+- medium_raw/: directory that contains a medium amount of data from `raw/` so that the code works in a short time and is still representative of the behavior
+
+- node2vec/: directory that contains the code for running the node2vec baseline method
+
+- raw/: directory that contains ALL of the raw data
+
+- README: file that contains a breakdown of all the files in the directory
+
+- small_raw/: directory that contains a very, very small subset of the data just to test any pandas functionality with
