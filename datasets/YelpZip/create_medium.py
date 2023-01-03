@@ -2,16 +2,21 @@ import pandas as pd
 import random
 
 num_rows_total = 608598
-num_rows_keep = 2000
+times = 60
+num_rows_keep = num_rows_total-1
+row_section = int(num_rows_keep/times)
 
 rows_to_keep = random.sample(range(1, num_rows_total), num_rows_keep)
 
-medium_meta = pd.read_csv('raw/metadata', sep='\t', skiprows = lambda x: x not in rows_to_keep)
-medium_review = pd.read_csv('raw/reviewContent', sep='\t', skiprows = lambda x: x not in rows_to_keep)
+for i in range(times):
+    rows = rows_to_keep[i*row_section:(i+1)*row_section]
 
-r = 1000
+    medium_meta = pd.read_csv('raw/metadata', sep='\t', skiprows = lambda x: x not in rows)
+    medium_review = pd.read_csv('raw/reviewContent', sep='\t', skiprows = lambda x: x not in rows)
 
-medium_meta.iloc[0:r].to_csv('medium_raw/metadata', sep = '\t', index=False)
-medium_meta.iloc[r:].to_csv('gdn_medium_raw/metadata', sep = '\t', index=False)
-medium_review.iloc[0:r].to_csv('medium_raw/reviewContent', sep = '\t', index=False)
-medium_review.iloc[r:].to_csv('gdn_medium_raw/reviewContent', sep = '\t', index=False)
+
+    medium_meta.to_csv(f'metagdn/metadata{i}', sep = '\t', index=False)
+    medium_review.to_csv(f'metagdn/reviewContent{i}', sep = '\t', index=False)
+
+#medium_meta.iloc[r:].to_csv('pret_gdn_medium_raw/metadata', sep = '\t', index=False)
+#medium_review.iloc[r:].to_csv('pret_gdn_medium_raw/reviewContent', sep = '\t', index=False)

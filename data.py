@@ -135,7 +135,7 @@ class DataProcessor:
 
         # split the target graph into train/valid/test with 4/2/4
         idx_anomaly = np.random.permutation(np.nonzero(self.target_label == 1)[0])
-        idx_normal = np.random.permutation(np.nonzero(self.target_label == 0)[0])
+        idx_normal = np.random.permutation(np.nonzero(self.target_label == -1)[0])
         split_ano = int(0.4 * len(idx_anomaly))
         split_normal = int(0.4 * len(idx_normal))
 

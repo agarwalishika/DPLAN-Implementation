@@ -1,1 +1,0 @@
-find *.csv ! -name raw_test_for_all.csv ! -name small.csv -type f -delete

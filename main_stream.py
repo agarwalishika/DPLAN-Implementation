@@ -5,10 +5,11 @@ import pandas as pd
 import tensorflow as tf
 tf.device("cuda")
 
-from DPLAN import DPLAN
+from DPLAN_stream import DPLAN
 from ADEnv import ADEnv
 from utils import writeResults
 from sklearn.metrics import roc_auc_score, average_precision_score
+from GDN import score_sample
 
 ### Basic Settings
 # data path settings
@@ -68,6 +69,9 @@ for data_f in data_folders:
     test_table.drop(columns=test_table.columns[0], axis=1, inplace=True)
     test_dataset=test_table.values
 
+    prev_weights_file = 0
+
+    print("Dataset: {}".format(subset))
     for i in range(runs):
         np.random.seed(42)
         tf.random.set_seed(42)
@@ -87,9 +91,7 @@ for data_f in data_folders:
         test_times=[]
         # run experiment
         print("#######################################################################")
-        print("Dataset: {}".format(subset))
-        print("Run: {}".format(i))
-
+        print("Round: {}".format(i))
         weights_file=os.path.join(model_path,"{}_{}_{}_weights.h4f".format(subset,i,data_name))
         # initialize environment and agent
         tf.compat.v1.reset_default_graph()
@@ -99,9 +101,13 @@ for data_f in data_folders:
                     label_normal=label_normal,
                     label_anomaly=label_anomaly,
                     name=data_name)
-        model=DPLAN(env=env,
-                    settings=settings)
-
+        if i > 0:
+            model=DPLAN(env=env,
+                    settings=settings, weights_file=prev_weights_file)
+        else:
+            model = DPLAN(env=env, settings=settings)
+        
+        prev_weights_file = weights_file
         # train the agent
         train_time=0
         if Train:

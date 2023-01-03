@@ -5,30 +5,33 @@ from calc_features import *
 import networkx as nx
 import pickle
 
-dir_name = "medium_raw"
+dir_name = "small_raw"
 
 
 def create_graph():
     # create one big dataframe for all the feature data
-
-    meta = pd.read_csv(dir_name + "/metadata", sep='\t', header=None)
+    
+    meta = pd.read_csv(dir_name + "/metadata0", sep='\t', header=None)
     meta.columns = ['user_id', 'prod_id', 'rating', 'label', 'date']
 
     #review = pd.read_csv(dir_name + "/reviewContent", sep='\t', header=None, quoting=csv.QUOTE_NONE, error_bad_lines=False)
-    review = pd.read_csv(dir_name + "/reviewContent", sep='\t', header=None)
+    review = pd.read_csv(dir_name + "/reviewContent0", sep='\t', header=None)
     review.columns = ['user_id', 'prod_id', 'date', 'review']
 
-    meta['reviewContent'] = ""
+    for i in range(1,2):
+        m = pd.read_csv(dir_name + f'/metadata{i}', sep='\t', header=None)
+        m.columns = ['user_id', 'prod_id', 'rating', 'label', 'date']
 
-    for ind, r in meta.iterrows():
-        u = r['user_id']
-        p = r['prod_id']
-        rev = review.query(f'user_id == {u} and prod_id == {p}')['review'].reset_index(drop=True)
-        try:
-            meta.at[ind, 'reviewContent'] = rev[0]
-        except:
-            meta.at[ind, 'reviewContent'] = ""
+        r = pd.read_csv(dir_name + f'/reviewContent{i}', sep='\t', header=None)
+        r.columns = ['user_id', 'prod_id', 'date', 'review']
+
+        meta = pd.concat([meta, m])
+        review = pd.concat([review, r])
+    
+    meta = pd.merge(meta, review, on=['user_id', 'prod_id', 'date'], how='left')
     meta = meta.reset_index()
+    meta = meta.rename(columns={'review':'reviewContent'})
+    meta['reviewContent'] = meta['reviewContent'].fillna("")
 
     # user node features
     user_ids = get_set_of(meta, 'user_id')
@@ -103,7 +106,3 @@ def create_graph():
 
 if not os.path.isfile('graph.txt'):
     create_graph()
-
-    f = open('graph.txt', 'rb')
-    G = pickle.load(f)
-    f.close()

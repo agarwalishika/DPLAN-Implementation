@@ -6,14 +6,14 @@ import networkx as nx
 import pickle
 
 
-dir_name = "../medium_raw/"
+dir_name = ""
 
 if not os.path.isfile('embeddings'):
     f = open('../graph.txt', 'rb')
     G = pickle.load(f)
     f.close()
 
-    embeds = Node2Vec(G, dimensions=9999, walk_length=30, num_walks=200, workers=4)
+    embeds = Node2Vec(G, dimensions=7999, walk_length=30, num_walks=20, workers=2)
     model = embeds.fit(window=10, min_count=1, batch_words=4)
     model.wv.save_word2vec_format('embeddings')
 

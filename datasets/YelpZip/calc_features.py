@@ -44,11 +44,9 @@ returns a dictionary with the key as the review number
 and the value as the length of the review
 '''
 def review_length(data):
-    feat = {}
-    for ind, row in data.iterrows():
-        feat[row['index']] = len(row['reviewContent'])
-    return feat
-
+    feat = pd.Series(data['reviewContent'])
+    feat = feat.str.len()
+    return feat.to_dict()
 '''
 returns a list of edges (represented by tuples)
 between 'key' and reviews

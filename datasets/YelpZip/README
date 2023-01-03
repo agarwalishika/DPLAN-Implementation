@@ -2,6 +2,8 @@
 
 - create_medium.py: to create a medium sized dataset to train/test on. Takes a portion of the data in the directory `raw/`
 
+- create_master.py: to create a master file that we can use for creating the .mat graph files for GDN/Meta-GDN to use
+
 - deepwalk/: directory that contains the code for running the Deep Walk baseline method
 
 - graph.txt: pickle file that represents the graph. load from pickle and use it as a networkx object
@@ -17,3 +19,14 @@
 - README: file that contains a breakdown of all the files in the directory
 
 - small_raw/: directory that contains a very, very small subset of the data just to test any pandas functionality with
+
+
+How to run DPLAN:
+- Create your dataset by using create_medium.py
+- Create a graph out of your dataset by using make_graph.py (this will internally use calc_features.py)
+- Create embeddings out of your graph using mod_node2vec.py (copy this python file into your data directory) - at the end, you should have final_embeddings.csv and test_final_embeddings.csv
+- Create .mat graph files by:
+	- creating the master file using create_master.py
+	- downloading the master file and running preprocessing.py locally
+	- uploading the .mat files to DPLAN-Implementation/graphs and calling the folder "yelp/"
+- Change the directory names in main.py in DPLAN-Implementation/ and run main.py

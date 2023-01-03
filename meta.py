@@ -100,6 +100,39 @@ class Meta(nn.Module):
         # evaluate
         return loss_f
 
+    def predict(self, x_train, y_train, x_test):
+
+        prediction = self.net(x_train[0], vars=None, bn_training=True)
+        loss = dev_loss(y_train[0], prediction)
+        grad = torch.autograd.grad(loss, self.net.parameters())
+        # update the parameters
+        adapt_weights = list(map(lambda p: p[1] - self.update_lr * p[0], zip(grad, self.net.parameters())))
+
+        # for multiple step update
+        for k in range(1, self.update_step_test):
+            # evaluate the i-th task
+            prediction = self.net(x_train[0], adapt_weights, bn_training=True)
+            loss = dev_loss(y_train[0], prediction)
+            # compute gradients on theta'
+            grad = torch.autograd.grad(loss, adapt_weights)
+            # perform one-step update step i + 1
+            adapt_weights = list(map(lambda p: p[1] - self.update_lr * p[0], zip(grad, adapt_weights)))
+
+        for i in range(1, len(x_train)):
+            # for multiple step update
+            for k in range(self.update_step_test):
+                # evaluate the i-th task
+                prediction = self.net(x_train[i], adapt_weights, bn_training=True)
+                loss = dev_loss(y_train[i], prediction)
+                # compute gradients on theta'
+                grad = torch.autograd.grad(loss, adapt_weights)
+                # perform one-step update step i + 1
+                adapt_weights = list(map(lambda p: p[1] - self.update_lr * p[0], zip(grad, adapt_weights)))
+
+        y_pred = self.net(x_test, adapt_weights, bn_training=True)
+        y_pred = y_pred.detach().cpu().numpy()
+        return y_pred
+
 
     def evaluate(self, x_train, y_train, x_test, y_test):
 
