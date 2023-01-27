@@ -97,6 +97,7 @@ def score_sample(x):
 '''
 #GDN
 def score_sample(x):
+    print('GDNrunthrough')
     args = get_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

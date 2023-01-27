@@ -5,7 +5,7 @@ from calc_features import *
 import networkx as nx
 import pickle
 
-dir_name = "small_raw"
+dir_name = "gdn"
 
 
 def create_graph():
@@ -18,7 +18,7 @@ def create_graph():
     review = pd.read_csv(dir_name + "/reviewContent0", sep='\t', header=None)
     review.columns = ['user_id', 'prod_id', 'date', 'review']
 
-    for i in range(1,2):
+    for i in range(1,60):
         m = pd.read_csv(dir_name + f'/metadata{i}', sep='\t', header=None)
         m.columns = ['user_id', 'prod_id', 'rating', 'label', 'date']
 

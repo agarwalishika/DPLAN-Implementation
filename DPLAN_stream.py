@@ -201,11 +201,11 @@ class DPLANCallbacks(Callback):
 
     def on_train_begin(self, logs=None):
         # calculate the intrinsic_reward from the initialized DQN
-        #self.model.processor.intrinsic_reward=DQN_iforest(self.env.x, self.model.model)
-        self.model.processor.intrinsic_reward=DQN_GDN(self.env.x, self.model.model)
+        self.model.processor.intrinsic_reward=DQN_iforest(self.env.x, self.model.model)
+        #self.model.processor.intrinsic_reward=DQN_GDN(self.env.x, self.model.model)
 
     def on_episode_end(self, episode, logs={}):
         # on the end of episode, DPLAN needs to update the target DQN and the penulti-features
         # the update process of target DQN have implemented in "rl.agents.dqn.DQNAgent.backward()"
-        #self.model.processor.intrinsic_reward=DQN_iforest(self.env.x, self.model.model)
-        self.model.processor.intrinsic_reward=DQN_GDN(self.env.x, self.model.model)
+        self.model.processor.intrinsic_reward=DQN_iforest(self.env.x, self.model.model)
+        #self.model.processor.intrinsic_reward=DQN_GDN(self.env.x, self.model.model)

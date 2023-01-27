@@ -15,18 +15,18 @@ from GDN import score_sample
 # data path settings
 data_path="datasets"
 data_folders = ["YelpZip"]
-data_subsets={"YelpZip" : ["efficient_metagdn/final_embeddings"]}
+data_subsets={"YelpZip" : ["gdn/final_embeddings"]}
 # data_folders=["NB15_unknown1"]
 # data_subsets={"NB15_unknown1":["Fuzzers","Generic","Reconnaissance"]}
 # data_subsets={"NB15_unknown1":["Analysis","DoS","Exploits","Fuzzers","Reconnaissance"]}
-testdata_subset="efficient_metagdn/test_final_embeddings.csv" # test data is the same for subsets of the same class
+testdata_subset="gdn/test_final_embeddings.csv" # test data is the same for subsets of the same class
 # scenario settings
 num_knowns=141
 contamination_rate=0.141
 # experiment settings
-runs=10
+runs=15
 model_path="./model"
-result_path="./results/metagdn"
+result_path="./results/gdn"
 result_file="results.csv"
 Train=True
 Test=True
