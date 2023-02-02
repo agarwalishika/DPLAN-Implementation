@@ -3,6 +3,7 @@ import time
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+import keras.backend.tensorflow_backend as K
 tf.device("cuda")
 
 from DPLAN_stream import DPLAN
@@ -10,6 +11,13 @@ from ADEnv import ADEnv
 from utils import writeResults
 from sklearn.metrics import roc_auc_score, average_precision_score
 from GDN import score_sample
+from DPLAN_stream import DQN_iforest
+import matplotlib.pyplot as plt
+from sklearn import metrics
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import precision_score
+from sklearn.metrics import recall_score
+from sklearn.metrics import f1_score
 
 ### Basic Settings
 # data path settings
@@ -21,12 +29,12 @@ data_subsets={"YelpZip" : ["gdn/final_embeddings"]}
 # data_subsets={"NB15_unknown1":["Analysis","DoS","Exploits","Fuzzers","Reconnaissance"]}
 testdata_subset="gdn/test_final_embeddings.csv" # test data is the same for subsets of the same class
 # scenario settings
-num_knowns=141
+num_knowns=2092
 contamination_rate=0.141
 # experiment settings
-runs=15
-model_path="./model"
-result_path="./results/gdn"
+runs=55
+model_path="./active_model"
+result_path="./results/active"
 result_file="results.csv"
 Train=True
 Test=True
@@ -40,7 +48,7 @@ label_anomaly=-1
 
 ### DPLAN Settings
 settings={}
-settings["hidden_layer"]=20 # l
+settings["hidden_layer"]=40 # l
 settings["memory_size"]=100000 # M
 settings["warmup_steps"]=10000
 settings["episodes"]=10
@@ -56,6 +64,21 @@ settings["gradient_momentum"]=0.95
 settings["penulti_update"]=2000 # N
 settings["target_update"]=10000 # K
 
+config = tf.compat.v1.ConfigProto(
+    device_count={'GPU': 1},
+    intra_op_parallelism_threads=1,
+    inter_op_parallelism_threads=1,
+    allow_soft_placement=True
+)
+
+config.gpu_options.allow_growth = True
+config.gpu_options.per_process_gpu_memory_fraction = 0.6
+
+session = tf.compat.v1.Session(config=config)
+
+K.set_session(session)
+
+model = None
 # different datasets
 if not os.path.exists(model_path):
     os.mkdir(model_path)
@@ -70,6 +93,8 @@ for data_f in data_folders:
     test_dataset=test_table.values
 
     prev_weights_file = 0
+    prev_model = 0
+    graph = 0
 
     print("Dataset: {}".format(subset))
     for i in range(runs):
@@ -94,8 +119,43 @@ for data_f in data_folders:
         print("Round: {}".format(i))
         weights_file=os.path.join(model_path,"{}_{}_{}_weights.h4f".format(subset,i,data_name))
         # initialize environment and agent
-        tf.compat.v1.reset_default_graph()
-        env=ADEnv(dataset=undataset,
+        #tf.compat.v1.reset_default_graph()
+
+        train_points = []
+
+        if i > 0:
+            num_samples, _ = undataset.shape
+            feat = 8000
+            X = undataset[:,:feat]
+            Y = undataset[:,feat]
+
+            #with graph.as_default():
+            #    with session.as_default():
+            #        with session.graph.as_default():
+            model.load_weights(prev_weights_file)         
+            iforest_scores = DQN_iforest(X, model.qnet)
+
+            X = np.reshape(X, (num_samples, feat))
+            preds = model.predict_label(X)
+
+            for j in range(len(undataset)):           
+                # Check iForest
+                ifs = iforest_scores[j]
+
+                # Check correctness
+                pred = preds[j]
+                f = open('predictions', 'a')
+                f.write(f'pred: {pred}, label: {Y[j]}\n')
+                f.close() 
+                
+                if (ifs >= 0.4 and ifs <= 0.6) or (pred != Y[j]):
+                    train_points.append(undataset[j])
+                
+            train_points = np.array(train_points)
+        else:
+            train_points = undataset
+
+        env=ADEnv(dataset=train_points,
                     sampling_Du=size_sampling_Du,
                     prob_au=prob_au,
                     label_normal=label_normal,
@@ -106,8 +166,9 @@ for data_f in data_folders:
                     settings=settings, weights_file=prev_weights_file)
         else:
             model = DPLAN(env=env, settings=settings)
-        
+
         prev_weights_file = weights_file
+        graph = tf.compat.v1.get_default_graph()
         # train the agent
         train_time=0
         if Train:
@@ -125,7 +186,13 @@ for data_f in data_folders:
             model.load_weights(weights_file)
             # test DPLAN
             test_start=time.time()
-            pred_y=model.predict(test_X)
+            pred_y=model.predict_label(test_X)
+
+            for j in range(len(pred_y)):
+                f = open('predictions', 'a')
+                f.write(f'pred: {pred_y[j]}, label: {test_y[j]}\n')
+                f.close() 
+
             test_end=time.time()
             test_time=test_end-test_start
             print("Test time: {}/s".format(test_time))
@@ -144,6 +211,33 @@ for data_f in data_folders:
             train_times.append(train_time)
             test_times.append(test_time)
 
+            #Draw ROC AUC curve
+            fpr, tpr, _ = metrics.roc_curve(test_y,  pred_y)
+            plt.plot(fpr,tpr)
+            plt.ylabel('True Positive Rate')
+            plt.xlabel('False Positive Rate')
+            plt.show()
+            plt.savefig(f'ROC_{i}.png')
+            plt.figure().clear()
+
+            #Confusion matrix
+            m = confusion_matrix(test_y, pred_y)
+            f = open('confusion.txt', 'a')
+            f.write("Run {} - ".format(i))
+            f.write(np.array2string(m))
+            f.write('\n')
+            f.close()
+
+            prec = precision_score(test_y, pred_y)
+            recall = recall_score(test_y, pred_y)
+            f1 = f1_score(test_y, pred_y)
+            f = open('metrics.txt', 'a')
+            f.write("Run {} - ".format(i))
+            f.write("precision: {}\t recall: {}\t f1: {}".format(prec, recall, f1))
+            f.write('\n')
+            f.close()
+
+
         if Test:
             # write results
-            writeResults(subset, rocs, prs, train_times, test_times, os.path.join(result_path,result_file))
+            writeResults(i, rocs, prs, train_times, test_times, os.path.join(result_path,result_file))

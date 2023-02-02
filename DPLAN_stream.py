@@ -87,6 +87,7 @@ class DPLAN:
             agent.target_model.set_weights(weights)
 
         self.agent=agent
+        self.qnet = model
 
     def fit(self, env: ADEnv=None, weights_file=None):
         # Check whether a new env is used.
@@ -123,6 +124,12 @@ class DPLAN:
         # Return the predicted labels.
         q_values=self.agent.model.predict(X[:,np.newaxis,:])
         labels=np.argmax(q_values,axis=1)
+
+        for i in range(len(labels)):
+            if labels[i] == 1:
+                labels[i] = -1
+            elif labels[i] == 0:
+                labels[i] = 1
 
         return labels
 
