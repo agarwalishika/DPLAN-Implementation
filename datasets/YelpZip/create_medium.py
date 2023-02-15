@@ -15,8 +15,8 @@ for i in range(times):
     medium_review = pd.read_csv('raw/reviewContent', sep='\t', skiprows = lambda x: x not in rows)
 
 
-    medium_meta.to_csv(f'gdn/metadata{i}', sep = '\t', index=False)
-    medium_review.to_csv(f'gdn/reviewContent{i}', sep = '\t', index=False)
+    medium_meta.to_csv(f'chopped/metadata{i}', sep = '\t', index=False)
+    medium_review.to_csv(f'chopped/reviewContent{i}', sep = '\t', index=False)
 
 #medium_meta.iloc[r:].to_csv('pret_gdn_medium_raw/metadata', sep = '\t', index=False)
 #medium_review.iloc[r:].to_csv('pret_gdn_medium_raw/reviewContent', sep = '\t', index=False)

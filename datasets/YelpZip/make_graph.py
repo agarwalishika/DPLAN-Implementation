@@ -5,7 +5,7 @@ from calc_features import *
 import networkx as nx
 import pickle
 
-dir_name = "gdn"
+dir_name = "chopped"
 
 
 def create_graph():
@@ -35,41 +35,55 @@ def create_graph():
 
     # user node features
     user_ids = get_set_of(meta, 'user_id')
-    user_pos_reviews = ratio_positive_reviews(meta, 'user_id')
-    user_neg_reviews = ratio_negative_reviews(meta, 'user_id')
+    u_ratio_pos_rev = ratio_positive_reviews(meta, 'user_id')
+    u_num_pos_rev = num_positive_reviews(meta, 'user_id')
+    u_ratio_neg_rev = ratio_negative_reviews(meta, 'user_id')
+    u_num_neg_rev = num_negative_reviews(meta, 'user_id')
 
     # create the user nodes
     user_nodes = []
     for u in user_ids:
         name = "user_" + str(u)
         feat = {}
-        feat["user_pos_reviews"] = user_pos_reviews[u]
-        feat["user_neg_reviews"] = user_neg_reviews[u]
+        feat["u_ratio_pos_rev"] = u_ratio_pos_rev[u]
+        feat["u_num_pos_rev"] = u_num_pos_rev[u]
+        feat["u_ratio_neg_rev"] = u_ratio_neg_rev[u]
+        feat["u_num_neg_rev"] = u_num_neg_rev[u]
         user_nodes.append((name, feat))
 
     # product node features
     prod_ids = get_set_of(meta, 'prod_id')
-    prod_pos_reviews = ratio_positive_reviews(meta, 'prod_id')
-    prod_neg_reviews = ratio_negative_reviews(meta, 'prod_id')
+    p_ratio_pos_rev = ratio_positive_reviews(meta, 'prod_id')
+    p_num_pos_rev = num_positive_reviews(meta, 'prod_id')
+    p_ratio_neg_rev = ratio_negative_reviews(meta, 'prod_id')
+    p_num_neg_rev = num_negative_reviews(meta, 'prod_id')
 
     # create the product nodes
     prod_nodes = []
     for p in prod_ids:
         name = "prod_" + str(p)
         feat = {}
-        feat["prod_pos_reviews"] = prod_pos_reviews[p]
-        feat["prod_neg_reviews"] = prod_neg_reviews[p]
+        feat["p_ratio_pos_rev"] = p_ratio_pos_rev[p]
+        feat["p_num_pos_rev"] = p_num_pos_rev[p]
+        feat["p_ratio_neg_rev"] = p_ratio_neg_rev[p]
+        feat["p_num_neg_rev"] = p_num_neg_rev[p]
         prod_nodes.append((name, feat))
 
 
     # review content node features
     review_lens = review_length(meta)
+    rev_is_single = is_singleton(meta)
+    caps_percent = all_caps_percentage(meta)
+    upper_percent = uppercase_percent(meta)
 
     # create the review nodes
     rev_nodes = []
     for key in review_lens:
         name = "rev_" + str(key)
         rev_nodes.append((name, {'review_len' : review_lens[key]}))
+        rev_nodes.append((name, {'rev_is_single' : rev_is_single[key]}))
+        rev_nodes.append((name, {'caps_percent' : caps_percent[key]}))
+        rev_nodes.append((name, {'upper_percent' : caps_percent[key]}))
 
         #store the review key and label for later
         f = open(dir_name + '/review_labels', 'a')

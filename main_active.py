@@ -9,6 +9,7 @@ tf.device("cuda")
 from DPLAN_stream import DPLAN
 from ADEnv import ADEnv
 from utils import writeResults
+from sklearn.ensemble import IsolationForest
 from sklearn.metrics import roc_auc_score, average_precision_score
 from GDN import score_sample
 from DPLAN_stream import DQN_iforest
@@ -29,37 +30,56 @@ data_subsets={"YelpZip" : ["small_embeds/final_embeddings"]}
 # data_subsets={"NB15_unknown1":["Analysis","DoS","Exploits","Fuzzers","Reconnaissance"]}
 testdata_subset="small_embeds/test_final_embeddings.csv" # test data is the same for subsets of the same class
 # experiment settings
+dist = ''
 runs=15
-model_path="./small_embeds"
-result_path="./results/small_embeds"
+model_path='./small_embeds'
+result_path='./results/small_embeds_' + dist
 result_file="results.csv"
 Train=True
 Test=True
 
 ### Anomaly Detection Environment Settings
 size_sampling_Du=860
-prob_au=0.5
+prob_au=0.1
 label_normal=1
 label_anomaly=-1
 
 
 ### DPLAN Settings
 settings={}
-settings["hidden_layer"]=40 # l
-settings["memory_size"]=100000 # M
-settings["warmup_steps"]=100 # 10000
-settings["episodes"]=10
-settings["steps_per_episode"]=200 #2000
-settings["epsilon_max"]=1
-settings["epsilon_min"]=0.1
-settings["epsilon_course"]=10000
-settings["minibatch_size"]=64
-settings["discount_factor"]=0.99 # gamma
-settings["learning_rate"]=0.00025
-settings["minsquared_gradient"]=0.01
-settings["gradient_momentum"]=0.95
-settings["penulti_update"]=2000 # N
-settings["target_update"]=10000 # K
+use_small = True
+if use_small:
+    settings["hidden_layer"]=40 # l
+    settings["memory_size"]=100000 # M
+    settings["warmup_steps"]=100 # 10000
+    settings["episodes"]=10
+    settings["steps_per_episode"]=200 #2000
+    settings["epsilon_max"]=1
+    settings["epsilon_min"]=0.1
+    settings["epsilon_course"]=10000
+    settings["minibatch_size"]=64
+    settings["discount_factor"]=0.99 # gamma
+    settings["learning_rate"]=0.00025
+    settings["minsquared_gradient"]=0.01
+    settings["gradient_momentum"]=0.95
+    settings["penulti_update"]=2000 # N
+    settings["target_update"]=10000 # K
+else:
+    settings["hidden_layer"]=400 # l
+    settings["memory_size"]=100000 # M
+    settings["warmup_steps"]=50000 # 10000
+    settings["episodes"]=20
+    settings["steps_per_episode"]=8000 #2000
+    settings["epsilon_max"]=1
+    settings["epsilon_min"]=0.1
+    settings["epsilon_course"]=10000
+    settings["minibatch_size"]=64
+    settings["discount_factor"]=0.99 # gamma
+    settings["learning_rate"]=0.0002
+    settings["minsquared_gradient"]=0.01
+    settings["gradient_momentum"]=0.95
+    settings["penulti_update"]=5000 # N
+    settings["target_update"]=30000 # K
 
 devices = 'cuda'
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
@@ -96,6 +116,7 @@ for data_f in data_folders:
     prev_model = 0
     graph = 0
 
+    train_tough = False
     print("Dataset: {}".format(subset))
     for i in range(runs):
         np.random.seed(42)
@@ -122,18 +143,24 @@ for data_f in data_folders:
         #tf.compat.v1.reset_default_graph()
 
         train_points = []
+        num_samples, feat = undataset.shape
 
-        if i > 5:
-            num_samples, _ = undataset.shape
-            feat = 201
+        if train_tough:
+            train_tough = False
+            feat = feat - 1
             X = undataset[:,:feat]
             Y = undataset[:,feat]
 
             #with graph.as_default():
             #    with session.as_default():
             #        with session.graph.as_default():
-            model.load_weights(prev_weights_file)         
-            iforest_scores = DQN_iforest(X, model.qnet)
+            #model.load_weights(prev_weights_file)         
+            #iforest_scores = DQN_iforest(X, model.qnet)
+
+            iforest=IsolationForest().fit(X)
+            scores=-iforest.score_samples(X)
+            # scaler scores to [0,1]
+            iforest_scores=(scores-scores.min())/(scores.max()-scores.min())
 
             X = np.reshape(X, (num_samples, feat))
             preds = model.predict_label(X)
@@ -144,19 +171,21 @@ for data_f in data_folders:
 
                 # Check correctness
                 pred = preds[j]
-                f = open('prediction_se', 'a')
+                '''f = open('predictions_' + dist, 'a')
                 f.write(f'pred: {pred}, label: {Y[j]}\n')
-                f.close() 
+                f.close()''' 
                 
                 if (ifs >= 0.4 and ifs <= 0.6) or (pred != Y[j]):
                     train_points.append(undataset[j])
                 
             train_points = np.array(train_points)
         else:
+            train_tough = True
             train_points = undataset
 
         env=ADEnv(dataset=train_points,
-                    sampling_Du=size_sampling_Du,
+                    points_space = undataset,
+                    sampling_Du=num_samples,
                     prob_au=prob_au,
                     label_normal=label_normal,
                     label_anomaly=label_anomaly,
@@ -189,9 +218,9 @@ for data_f in data_folders:
             pred_y=model.predict_label(test_X)
 
             for j in range(len(pred_y)):
-                f = open('predictions_se', 'a')
+                '''f = open('predictions_' + dist, 'a')
                 f.write(f'pred: {pred_y[j]}, label: {test_y[j]}\n')
-                f.close() 
+                f.close() '''
 
             test_end=time.time()
             test_time=test_end-test_start
@@ -212,17 +241,17 @@ for data_f in data_folders:
             test_times.append(test_time)
 
             #Draw ROC AUC curve
-            fpr, tpr, _ = metrics.roc_curve(test_y,  pred_y)
+            '''fpr, tpr, _ = metrics.roc_curve(test_y,  pred_y)
             plt.plot(fpr,tpr)
             plt.ylabel('True Positive Rate')
             plt.xlabel('False Positive Rate')
             plt.show()
-            plt.savefig(f'ROC1_{i}.png')
-            plt.figure().clear()
+            plt.savefig(f'ROC{dist}_{i}.png')
+            plt.figure().clear()'''
 
             #Confusion matrix
             m = confusion_matrix(test_y, pred_y)
-            f = open('confusion_se.txt', 'a')
+            f = open(f'confusion_{dist}.txt', 'a')
             f.write("Run {} - ".format(i))
             f.write(np.array2string(m))
             f.write('\n')
@@ -231,7 +260,7 @@ for data_f in data_folders:
             prec = precision_score(test_y, pred_y)
             recall = recall_score(test_y, pred_y)
             f1 = f1_score(test_y, pred_y)
-            f = open('metrics_se.txt', 'a')
+            f = open(f'metrics_{dist}.txt', 'a')
             f.write("Run {} - ".format(i))
             f.write("precision: {}\t recall: {}\t f1: {}".format(prec, recall, f1))
             f.write('\n')

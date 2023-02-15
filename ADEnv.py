@@ -1,6 +1,8 @@
 import gym
 import time
 import numpy as np
+from sklearn.cluster import KMeans
+from sklearn.ensemble import IsolationForest
 
 from utils import penulti_output
 from gym import spaces
@@ -9,7 +11,7 @@ class ADEnv(gym.Env):
     """
     Customized environment for anomaly detection
     """
-    def __init__(self,dataset: np.ndarray,sampling_Du=1000,prob_au=0.5,label_normal=0,label_anomaly=1, name="default"):
+    def __init__(self,dataset: np.ndarray,points_space: np.ndarray, sampling_Du=1000,prob_au=0.5,label_normal=0,label_anomaly=1, name="default"):
         """
         Initialize anomaly environment for DPLAN algorithm.
         :param dataset: Input dataset in the form of 2-D array. The Last column is the label.
@@ -37,6 +39,32 @@ class ADEnv(gym.Env):
         self.index_u=np.where(self.y==self.normal)[0]
         self.index_a=np.where(self.y==self.anomaly)[0]
 
+        # points space information
+        self.points_space = points_space[self.index_u]
+        self.x_space = self.points_space[:,:self.n_feature]
+        self.y_space = self.points_space[:,self.n_feature]
+        
+
+        # fit k-means clustering
+        self.n_clusters = 70
+        km = KMeans(n_clusters=self.n_clusters, init='k-means++')
+        self.clusters = km.fit_predict(self.x)
+        print('Fitted kmeans')
+        self.current_cluster = 0
+
+        # cluster based on iForest scores
+        '''self.bins = [[], [], [], [], [], [], [], [], [], []]
+        iforest=IsolationForest().fit(self.x_space)
+        scores=-iforest.score_samples(self.x_space)
+        # scaler scores to [0,1]
+        iforest_scores=(scores-scores.min())/(scores.max()-scores.min())
+        for i in range(len(iforest_scores)):
+            ind = int(iforest_scores[i] * 10)
+            if ind >= 10:
+                ind = 9
+            self.bins[ind].append(i)
+        self.current_bin = 0'''
+
         # observation space:
         self.observation_space=spaces.Discrete(self.m)
 
@@ -55,7 +83,18 @@ class ADEnv(gym.Env):
         return index
 
     def generate_u(self,action,s_t):
-        # sampling function for D_u
+
+        indices = np.where(self.clusters == self.current_cluster)[0]
+        self.current_cluster = (self.current_cluster + 1) % self.n_clusters
+        return np.random.choice(indices)
+        ''' while True:
+            self.current_bin = (self.current_bin + 1) % 10
+            if len(self.bins[self.current_bin - 1]) > 0:
+                break
+        return np.random.choice(self.bins[self.current_bin - 1])'''
+
+
+        '''# sampling function for D_u
         S=np.random.choice(self.index_u,self.num_S)
         # calculate distance in the space of last hidden layer of DQN
         all_x=self.x[np.append(S,s_t)]
@@ -72,7 +111,7 @@ class ADEnv(gym.Env):
             loc=np.argmax(dist)
         index=S[loc]
 
-        return index
+        return index'''
 
     def reward_h(self,action,s_t):
         # Anomaly-biased External Handcrafted Reward Function h
@@ -87,8 +126,12 @@ class ADEnv(gym.Env):
         # store former state
         s_t=self.state
         # choose generator
-        g=np.random.choice([self.generater_a, self.generate_u])
+        g=np.random.choice([self.generater_a, self.generate_u], p=[self.prob, 1-self.prob])
         s_tp1=g(action,s_t)
+
+        f = open('samples', 'a')
+        f.write(f'{self.y[s_tp1]},')
+        f.close()
 
         # change to the next state
         self.state=s_tp1
